@@ -1,15 +1,16 @@
+using System;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
+
 using FFmpeg.AutoGen.Abstractions;
-using RtspClientSharp;
-using RtspClientSharp.RawFrames.Video;
-using RtspClientSharp.Rtsp;
+
+using SkiaSharp;
 namespace FFmpegTest;
 
 public unsafe class VideoDecode
 {
-    
-    
+
+
     /// <summary>
     /// 解码器ID
     /// </summary>
@@ -18,22 +19,22 @@ public unsafe class VideoDecode
     /// <summary>
     /// 媒体数据包
     /// </summary>
-     AVPacket* avPacket;
+    AVPacket* avPacket;
 
     /// <summary>
     /// 媒体帧数据
     /// </summary>
-     AVFrame* avFrame;
+    AVFrame* avFrame;
 
     /// <summary>
     /// 解码器
     /// </summary>
-     AVCodec* avCodec;
+    AVCodec* avCodec;
 
     /// <summary>
     /// 编解码上下文
     /// </summary>
-      AVCodecContext* avCodecContext;
+    AVCodecContext* avCodecContext;
 
     public void InitDecoder()
     {
@@ -54,11 +55,11 @@ public unsafe class VideoDecode
         avCodecContext = ffmpeg.avcodec_alloc_context3(avCodec);
         if (avCodecContext != null)
         {
-            avCodecContext->width = 1920;
-            avCodecContext->height = 1080;
-            avCodecContext->time_base.num = 1;
-            avCodecContext->time_base.den = 9000;
-            avCodecContext->flags |= ffmpeg.AV_CODEC_FLAG_LOW_DELAY;
+            //avCodecContext->width = 1280;
+            //avCodecContext->height = 720;
+            //avCodecContext->time_base.num = 1;
+            //avCodecContext->time_base.den = 90000;
+            //avCodecContext->flags |= ffmpeg.AV_CODEC_FLAG_LOW_DELAY;
             if (ffmpeg.avcodec_open2(avCodecContext, avCodec, null) < 0)
             {
                 Debug.Fail("AV_codec_open2() returned null");
@@ -66,23 +67,91 @@ public unsafe class VideoDecode
         }
     }
 
-    public void DecoderRTSP(byte[] ss)
+    public void DecoderRTSP(byte* data, int count)
     {
-        fixed (byte* ptr = ss)
-        {
-            avPacket->data = ptr;
-            int resule = ffmpeg.avcodec_send_packet(avCodecContext, avPacket);
-            if (resule!=0)
-            {
-                
-            }
 
-            resule = ffmpeg.avcodec_receive_frame(avCodecContext, avFrame);
-            if (resule !=0)
+        avPacket->data = data;
+        avPacket->pts = avPacket->dts = 0;
+        avPacket->duration = 0;
+        avPacket->size = count;
+        avPacket->flags = 1;
+        int resule = ffmpeg.avcodec_send_packet(avCodecContext, avPacket);
+        if (resule != 0)
+        {
+            Console.WriteLine("填充失败");
+        }
+
+        resule = ffmpeg.avcodec_receive_frame(avCodecContext, avFrame);
+        if (resule != 0)
+        {
+            Console.WriteLine("解码失败");
+        }
+      
+
+
+        AVFrame* dst_frame = ffmpeg.av_frame_alloc();
+        dst_frame->format = (int)AVPixelFormat.AV_PIX_FMT_BGRA;
+        dst_frame->width = avFrame->width;
+        dst_frame->height = avFrame->height;
+       
+
+        
+
+        // 创建转换上下文
+        SwsContext* ctx = ffmpeg.sws_getContext(
+            avFrame->width,
+            avFrame->height,
+            (AVPixelFormat)avFrame->format,
+             dst_frame->width,
+              dst_frame->height,
+            (AVPixelFormat)dst_frame->format,
+            ffmpeg.SWS_BICUBIC,
+            null, null, null);
+        //获取转换后图像的 缓冲区大小
+        var bufferSize = ffmpeg.av_image_get_buffer_size(AVPixelFormat.AV_PIX_FMT_BGRA, dst_frame->width,
+              dst_frame->height, 1);
+        //获取转换后图像的 缓冲区大小
+
+        //创建一个指针
+        var FrameBufferPtr = Marshal.AllocHGlobal(bufferSize);
+        var TargetData = new byte_ptr4();
+        var TargetLinesize = new int4();
+        resule = ffmpeg.av_image_fill_arrays(ref TargetData, ref TargetLinesize, (byte*)FrameBufferPtr, (AVPixelFormat)dst_frame->format, dst_frame->width,
+              dst_frame->height, 1);
+        // 利用转换器将yuv 图像数据转换成指定的格式数据
+        ffmpeg.sws_scale(ctx, avFrame->data, avFrame->linesize, 0, avFrame->height, TargetData, TargetLinesize);
+        var data1 = new byte_ptr8();
+        data1.UpdateFrom(TargetData);
+        var linesize = new int8();
+        linesize.UpdateFrom(TargetLinesize);
+        //创建一个字节数据，将转换后的数据从内存中读取成字节数组
+        byte[] bytes = new byte[1280 * 720 * 4];
+        Marshal.Copy((IntPtr)data1[0], bytes, 0, bytes.Length);
+        
+
+        Marshal.FreeHGlobal(FrameBufferPtr);
+        ffmpeg.sws_freeContext(ctx);
+        SKBitmap sKBitmap = new SKBitmap(1280,720,SKColorType.Bgra8888,SKAlphaType.Premul);
+        // 锁定位图位于内存中的区域
+        IntPtr bitmapPixels = sKBitmap.GetPixels();
+       
+        Marshal.Copy(bytes, 0, bitmapPixels, bytes.Length);
+
+        using (var image = SKImage.FromBitmap(sKBitmap))
+        {
+            // 确定保存路径
+            string path = "path_to_save_image.png";
+
+            // 将图片保存到文件
+            using (var stream = File.Create(path))
             {
-                
+                image.Encode(SKEncodedImageFormat.Png, 100).SaveTo(stream);
             }
         }
-       
+         
+
+
+
     }
+   
 }

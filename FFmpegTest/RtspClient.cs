@@ -2,6 +2,10 @@
 using RtspClientSharp;
 using RtspClientSharp.RawFrames.Video;
 using RtspClientSharp.Rtsp;
+using System;
+using System.Diagnostics;
+using System.Runtime.InteropServices;
+using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace FFmpegTest;
 
@@ -10,12 +14,12 @@ public class RtspClientTest
     private CancellationTokenSource cancellationTokenSource;
 
     string RtspLive =
-        "rtsp://admin:asdqwe123@192.168.1.66:554/Streaming/Channels/101?transportmode=unicast&profile=Profile_1";
+        "rtsp://admin:qq123456@192.168.18.115:554/Streaming/Channels/101?transportmode=unicast&profile=Profile_1";
 
     private VideoDecode videoDecode;
     public void Run()
     {
-         videoDecode = new VideoDecode();
+        videoDecode = new VideoDecode();
         videoDecode.InitDecoder();
         try
         {
@@ -29,7 +33,7 @@ public class RtspClientTest
             Console.WriteLine("Rtsp取流失败!");
         }
     }
-
+    Stopwatch stopwatch;
     //开始进行异步连接取流
     private async Task ConnectAsync(ConnectionParameters connectionParameters, CancellationToken token)
     {
@@ -49,6 +53,7 @@ public class RtspClientTest
                     try
                     {
                         await rtspClient.ConnectAsync(token);
+                        stopwatch = Stopwatch.StartNew();
                     }
                     catch (OperationCanceledException)
                     {
@@ -90,8 +95,45 @@ public class RtspClientTest
     {
         if (e is RawH264Frame)
         {
-            videoDecode.DecoderRTSP(e.FrameSegment.ToArray());
+
+
+            if (stopwatch != null)
+            {
+                Console.WriteLine(stopwatch.Elapsed.TotalMilliseconds.ToString());
+            }
+            unsafe
+            {
+                byte[] array;
+                if(e is RtspClientSharp.RawFrames.Video.RawH264IFrame frame)
+                {
+                    IntPtr memory = Marshal.AllocHGlobal(frame.FrameSegment.Count+frame.SpsPpsSegment.Count);
+                     array = frame.SpsPpsSegment.Array.Concat(frame.FrameSegment).ToArray();
+                   
+                }
+                else
+                {
+                    array = e.FrameSegment.Array;
+                }
+              
+                //if(e.sa)
+              
+
+                // 固定内存区域以获取指针
+                GCHandle handle = GCHandle.Alloc(array, GCHandleType.Pinned);
+                try
+                {
+                    byte* data = (byte*)Marshal.UnsafeAddrOfPinnedArrayElement(array,0).ToPointer();
+                    videoDecode.DecoderRTSP(data, array.Length);
+                }
+                finally
+                {
+                    // 释放GCHandle
+                    handle.Free();
+                }
+               
+            }
            
+
         }
     }
 
