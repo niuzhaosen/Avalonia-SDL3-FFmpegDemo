@@ -11,10 +11,16 @@ namespace FFmpegTest;
 
 public class RtspClientTest
 {
+    showVideo show;
+    IntPtr ptr;
+    public RtspClientTest(showVideo showVideo,IntPtr x)
+    {
+         show = showVideo;ptr = x;
+    }
     private CancellationTokenSource cancellationTokenSource;
 
     string RtspLive =
-        "rtsp://admin:qq123456@192.168.18.115:554/Streaming/Channels/101?transportmode=unicast&profile=Profile_1";
+        "rtsp://admin:asdqwe123@192.168.1.66:554/Streaming/Channels/101?transportmode=unicast&profile=Profile_1";
 
     private VideoDecode videoDecode;
     public void Run()
@@ -89,7 +95,7 @@ public class RtspClientTest
         {
         }
     }
-
+    public delegate void showVideo(byte[] data);
     //流接受并进行解码
     private void RtspClient_FrameReceived(object sender, RtspClientSharp.RawFrames.RawFrame e)
     {
@@ -104,35 +110,36 @@ public class RtspClientTest
             unsafe
             {
                 byte[] array;
-                if(e is RtspClientSharp.RawFrames.Video.RawH264IFrame frame)
+                if (e is RtspClientSharp.RawFrames.Video.RawH264IFrame frame)
                 {
-                    IntPtr memory = Marshal.AllocHGlobal(frame.FrameSegment.Count+frame.SpsPpsSegment.Count);
-                     array = frame.SpsPpsSegment.Array.Concat(frame.FrameSegment).ToArray();
-                   
+                    IntPtr memory = Marshal.AllocHGlobal(frame.FrameSegment.Count + frame.SpsPpsSegment.Count);
+                    array = frame.SpsPpsSegment.Array.Concat(frame.FrameSegment).ToArray();
+
                 }
                 else
                 {
                     array = e.FrameSegment.Array;
                 }
-              
+
                 //if(e.sa)
-              
+
 
                 // 固定内存区域以获取指针
                 GCHandle handle = GCHandle.Alloc(array, GCHandleType.Pinned);
                 try
                 {
-                    byte* data = (byte*)Marshal.UnsafeAddrOfPinnedArrayElement(array,0).ToPointer();
-                    videoDecode.DecoderRTSP(data, array.Length);
+                    byte* data = (byte*)Marshal.UnsafeAddrOfPinnedArrayElement(array, 0).ToPointer();
+                    byte[] outdata = videoDecode.DecoderRTSP(data, array.Length,ptr);
+                    show(outdata);
                 }
                 finally
                 {
                     // 释放GCHandle
                     handle.Free();
                 }
-               
+
             }
-           
+
 
         }
     }

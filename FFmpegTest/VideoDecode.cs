@@ -4,7 +4,7 @@ using System.Runtime.InteropServices;
 
 using FFmpeg.AutoGen.Abstractions;
 
-using SkiaSharp;
+
 namespace FFmpegTest;
 
 public unsafe class VideoDecode
@@ -67,7 +67,7 @@ public unsafe class VideoDecode
         }
     }
 
-    public void DecoderRTSP(byte* data, int count)
+    public byte[] DecoderRTSP(byte* data, int count,IntPtr s)
     {
 
         avPacket->data = data;
@@ -125,30 +125,14 @@ public unsafe class VideoDecode
         var linesize = new int8();
         linesize.UpdateFrom(TargetLinesize);
         //创建一个字节数据，将转换后的数据从内存中读取成字节数组
-        byte[] bytes = new byte[1280 * 720 * 4];
-        Marshal.Copy((IntPtr)data1[0], bytes, 0, bytes.Length);
+        byte[] bytes = new byte[1920 * 1080 * 4];
+        Buffer.MemoryCopy((void*)data1[0], (void*)s, bytes.Length, bytes.Length);
         
 
         Marshal.FreeHGlobal(FrameBufferPtr);
         ffmpeg.sws_freeContext(ctx);
-        SKBitmap sKBitmap = new SKBitmap(1280,720,SKColorType.Bgra8888,SKAlphaType.Premul);
-        // 锁定位图位于内存中的区域
-        IntPtr bitmapPixels = sKBitmap.GetPixels();
-       
-        Marshal.Copy(bytes, 0, bitmapPixels, bytes.Length);
 
-        using (var image = SKImage.FromBitmap(sKBitmap))
-        {
-            // 确定保存路径
-            string path = "path_to_save_image.png";
-
-            // 将图片保存到文件
-            using (var stream = File.Create(path))
-            {
-                image.Encode(SKEncodedImageFormat.Png, 100).SaveTo(stream);
-            }
-        }
-         
+        return bytes;
 
 
 

@@ -5,13 +5,16 @@ using FFmpeg.AutoGen.Abstractions;
 using FFmpegTest;
 
 
-unsafe
-{
-    Console.WriteLine("Hello, World!");
-    FFmpegInit.Init();
-    Console.WriteLine($"FFmpeg version info: {ffmpeg.av_version_info()}");
+//unsafe
+//{
 
-    RtspClientTest rtspClient = new RtspClientTest();
-    rtspClient.Run();
-    Console.ReadLine();
-}
+    
+//    Console.WriteLine(AppDomain.CurrentDomain.BaseDirectory + "linux_x64");
+//    FFmpegInit.Init();
+//    Console.WriteLine($"FFmpeg version info: {ffmpeg.av_version_info()}");
+//    VideoDecode videoDecode = new VideoDecode();
+//    videoDecode.InitDecoder();
+//    //RtspClientTest rtspClient = new RtspClientTest(null,IntPtr.Zero);
+//    //rtspClient.Run();
+//    //Console.ReadLine();
+//}
