@@ -39,7 +39,7 @@ public class RtspClientTest
             Console.WriteLine("Rtsp取流失败!");
         }
     }
-    Stopwatch stopwatch;
+    
     //开始进行异步连接取流
     private async Task ConnectAsync(ConnectionParameters connectionParameters, CancellationToken token)
     {
@@ -59,7 +59,7 @@ public class RtspClientTest
                     try
                     {
                         await rtspClient.ConnectAsync(token);
-                        stopwatch = Stopwatch.StartNew();
+                    
                     }
                     catch (OperationCanceledException)
                     {
@@ -103,18 +103,15 @@ public class RtspClientTest
         {
 
 
-            if (stopwatch != null)
-            {
-                Console.WriteLine(stopwatch.Elapsed.TotalMilliseconds.ToString());
-            }
             unsafe
             {
+                bool isgj = false;
                 byte[] array;
                 if (e is RtspClientSharp.RawFrames.Video.RawH264IFrame frame)
                 {
                     IntPtr memory = Marshal.AllocHGlobal(frame.FrameSegment.Count + frame.SpsPpsSegment.Count);
                     array = frame.SpsPpsSegment.Array.Concat(frame.FrameSegment).ToArray();
-
+                    isgj = true;
                 }
                 else
                 {
@@ -129,7 +126,13 @@ public class RtspClientTest
                 try
                 {
                     byte* data = (byte*)Marshal.UnsafeAddrOfPinnedArrayElement(array, 0).ToPointer();
-                    byte[] outdata = videoDecode.DecoderRTSP(data, array.Length,ptr);
+                    Stopwatch stopwatch =new Stopwatch();
+                    stopwatch.Start();
+                   // IntPtr sss = Marshal.AllocHGlobal(1920 * 1080 * 3);
+                    byte[] outdata = videoDecode.DecoderRTSP(data, array.Length, ptr, isgj);
+                    stopwatch.Stop();
+                    Console.WriteLine("解码+转码+一次内存拷贝时间："+ stopwatch.Elapsed.TotalMilliseconds);
+                  //  Marshal.FreeHGlobal(sss);
                     show(outdata);
                 }
                 finally
