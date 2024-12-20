@@ -65,20 +65,20 @@ public unsafe class VideoDecode
                 Debug.Fail("AV_codec_open2() returned null");
             }
         }
-        int index = 0;
-        while (true)
-        {
-            AVCodecHWConfig* x = ffmpeg.avcodec_get_hw_config(avCodec, index);
-            if (x == null)
-            {
-                break;
-            }
-            Console.WriteLine(index);
-            Console.WriteLine(x->device_type);
-            Console.WriteLine(x->pix_fmt);
-            index++;
+        //int index = 0;
+        //while (true)
+        //{
+        //    AVCodecHWConfig* x = ffmpeg.avcodec_get_hw_config(avCodec, index);
+        //    if (x == null)
+        //    {
+        //        break;
+        //    }
+        //    Console.WriteLine(index);
+        //    Console.WriteLine(x->device_type);
+        //    Console.WriteLine(x->pix_fmt);
+        //    index++;
 
-        }
+        //}
 
     }
 

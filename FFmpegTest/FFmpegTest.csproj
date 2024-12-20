@@ -12,7 +12,10 @@
     <ItemGroup>
       <PackageReference Include="FFmpeg.AutoGen" Version="7.0.0" />
       <PackageReference Include="FFmpeg.AutoGen.Bindings.DynamicallyLoaded" Version="7.0.0" />
-      <PackageReference Include="RtspClientSharp" Version="1.3.3" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <ProjectReference Include="..\..\RtspClientSharp\RtspClientSharp\RtspClientSharp.csproj" />
     </ItemGroup>
 
 </Project>

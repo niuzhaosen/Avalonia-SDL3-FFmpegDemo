@@ -1,5 +1,6 @@
 
 using RtspClientSharp;
+using RtspClientSharp.RawFrames;
 using RtspClientSharp.RawFrames.Video;
 using RtspClientSharp.Rtsp;
 using System;
@@ -99,6 +100,7 @@ public class RtspClientTest
     //流接受并进行解码
     private void RtspClient_FrameReceived(object sender, RtspClientSharp.RawFrames.RawFrame e)
     {
+       
         if (e is RawH264Frame)
         {
 
@@ -133,6 +135,53 @@ public class RtspClientTest
                     stopwatch.Stop();
                     Console.WriteLine("解码+转码+一次内存拷贝时间："+ stopwatch.Elapsed.TotalMilliseconds);
                   //  Marshal.FreeHGlobal(sss);
+                    show(outdata);
+                }
+                finally
+                {
+                    // 释放GCHandle
+                    handle.Free();
+                }
+
+            }
+
+
+        }
+
+        if (e is RawH265Frame)
+        {
+
+
+            unsafe
+            {
+                bool isgj = false;
+                byte[] array;
+                if (e is RtspClientSharp.RawFrames.Video.RawH265IFrame frame)
+                {
+                    IntPtr memory = Marshal.AllocHGlobal(frame.FrameSegment.Count + frame.ParametersBytesSegment.Count);
+                    array = frame.ParametersBytesSegment.Array.Concat(frame.FrameSegment).ToArray();
+                    isgj = true;
+                }
+                else
+                {
+                    array = e.FrameSegment.Array;
+                }
+
+                //if(e.sa)
+
+
+                // 固定内存区域以获取指针
+                GCHandle handle = GCHandle.Alloc(array, GCHandleType.Pinned);
+                try
+                {
+                    byte* data = (byte*)Marshal.UnsafeAddrOfPinnedArrayElement(array, 0).ToPointer();
+                    Stopwatch stopwatch = new Stopwatch();
+                    stopwatch.Start();
+                    // IntPtr sss = Marshal.AllocHGlobal(1920 * 1080 * 3);
+                    byte[] outdata = videoDecode.DecoderRTSP(data, array.Length, ptr, isgj);
+                    stopwatch.Stop();
+                    Console.WriteLine("解码+转码+一次内存拷贝时间：" + stopwatch.Elapsed.TotalMilliseconds);
+                    //  Marshal.FreeHGlobal(sss);
                     show(outdata);
                 }
                 finally
