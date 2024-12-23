@@ -36,6 +36,9 @@ public unsafe class VideoDecode
     /// </summary>
     AVCodecContext* avCodecContext;
 
+
+    AVHWDeviceType type;
+
     public void InitDecoder()
     {
         videoCodecID = AVCodecID.AV_CODEC_ID_H264;
@@ -65,24 +68,29 @@ public unsafe class VideoDecode
                 Debug.Fail("AV_codec_open2() returned null");
             }
         }
-        //int index = 0;
-        //while (true)
-        //{
-        //    AVCodecHWConfig* x = ffmpeg.avcodec_get_hw_config(avCodec, index);
-        //    if (x == null)
-        //    {
-        //        break;
-        //    }
-        //    Console.WriteLine(index);
-        //    Console.WriteLine(x->device_type);
-        //    Console.WriteLine(x->pix_fmt);
-        //    index++;
-
-        //}
+        int index = 0;
+        while (true)
+        {
+            AVCodecHWConfig* x = ffmpeg.avcodec_get_hw_config(avCodec, index);
+            if (x == null)
+            {
+                break;
+            }
+            Console.WriteLine(index);
+            Console.WriteLine(x->device_type);
+            Console.WriteLine(x->pix_fmt);
+            index++;
+            string name = ffmpeg.av_hwdevice_get_type_name(x->device_type);
+            if ((name == null?"": name).Contains("vulkan"))
+            {
+                type = x->device_type;
+            }
+        }
+      
 
     }
 
-    public byte[] DecoderRTSP(byte* data, int count, IntPtr s, bool isgj)
+    public void DecoderRTSP(byte* data, int count, IntPtr s, bool isgj)
     {
 
         avPacket->data = data;
@@ -90,7 +98,7 @@ public unsafe class VideoDecode
         avPacket->duration = 0;
         avPacket->size = count;
         avPacket->flags = isgj ? 1 : 0;
-        Stopwatch sw = Stopwatch.StartNew();
+      
         int resule = ffmpeg.avcodec_send_packet(avCodecContext, avPacket);
         if (resule != 0)
         {
@@ -102,10 +110,7 @@ public unsafe class VideoDecode
         {
             Console.WriteLine("解码失败");
         }
-        sw.Stop();
-        Console.WriteLine("解码时间：" + sw.Elapsed.TotalMilliseconds);
-
-        sw = Stopwatch.StartNew();
+    
 
         AVFrame* dst_frame = ffmpeg.av_frame_alloc();
         dst_frame->format = (int)AVPixelFormat.AV_PIX_FMT_BGRA;
@@ -123,7 +128,7 @@ public unsafe class VideoDecode
              dst_frame->width,
               dst_frame->height,
             (AVPixelFormat)dst_frame->format,
-            ffmpeg.SWS_BICUBIC,
+            ffmpeg.SWS_FAST_BILINEAR,
             null, null, null);
         //获取转换后图像的 缓冲区大小
         var bufferSize = ffmpeg.av_image_get_buffer_size(AVPixelFormat.AV_PIX_FMT_BGRA, dst_frame->width,
@@ -138,9 +143,7 @@ public unsafe class VideoDecode
               dst_frame->height, 1);
         // 利用转换器将yuv 图像数据转换成指定的格式数据
         ffmpeg.sws_scale(ctx, avFrame->data, avFrame->linesize, 0, avFrame->height, TargetData, TargetLinesize);
-        sw.Stop();
-        Console.WriteLine("转码时间：" + sw.Elapsed.TotalMilliseconds);
-        sw = Stopwatch.StartNew();
+    
         var data1 = new byte_ptr8();
         data1.UpdateFrom(TargetData);
         var linesize = new int8();
@@ -148,13 +151,11 @@ public unsafe class VideoDecode
         //创建一个字节数据，将转换后的数据从内存中读取成字节数组
         byte[] bytes = new byte[1920 * 1080 * 4];
         Buffer.MemoryCopy((void*)data1[0], (void*)s, bytes.Length, bytes.Length);
-        sw.Stop();
-        Console.WriteLine("内存拷贝时间：" + sw.Elapsed.TotalMilliseconds);
+   
 
         Marshal.FreeHGlobal(FrameBufferPtr);
         ffmpeg.sws_freeContext(ctx);
 
-        return bytes;
 
 
 
