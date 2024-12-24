@@ -81,14 +81,25 @@ public unsafe class VideoDecode
             Console.WriteLine(x->pix_fmt);
             index++;
             string name = ffmpeg.av_hwdevice_get_type_name(x->device_type);
-            if ((name == null?"": name).Contains("vulkan"))
+            Console.WriteLine(name);
+            if ((name == null ? "" : name).Contains("dxva2"))
             {
                 type = x->device_type;
+
+
             }
         }
-      
+
+        //AVBufferRef* avBufferRef;
+        //int xx = ffmpeg.av_hwdevice_ctx_create(&avBufferRef, type,
+        //                              null, null, 0);
+        //avCodecContext->hw_device_ctx = ffmpeg.av_buffer_ref(avBufferRef);
 
     }
+
+
+
+
 
     public void DecoderRTSP(byte* data, int count, IntPtr s, bool isgj)
     {
@@ -98,7 +109,7 @@ public unsafe class VideoDecode
         avPacket->duration = 0;
         avPacket->size = count;
         avPacket->flags = isgj ? 1 : 0;
-      
+        
         int resule = ffmpeg.avcodec_send_packet(avCodecContext, avPacket);
         if (resule != 0)
         {
@@ -110,25 +121,36 @@ public unsafe class VideoDecode
         {
             Console.WriteLine("解码失败");
         }
-    
+
 
         AVFrame* dst_frame = ffmpeg.av_frame_alloc();
         dst_frame->format = (int)AVPixelFormat.AV_PIX_FMT_BGRA;
         dst_frame->width = avFrame->width;
         dst_frame->height = avFrame->height;
 
+        AVFrame* sw_frame = ffmpeg.av_frame_alloc(), tmp_frame = ffmpeg.av_frame_alloc();
 
-
+        if (avFrame->format != 12)
+        {
+            /* 将解码数据从GPU拷贝到CPU */
+            if ( ffmpeg.av_hwframe_transfer_data(sw_frame, avFrame, 0) < 0)
+            {
+               
+            }
+            tmp_frame = sw_frame;
+        }
+        else
+            tmp_frame = avFrame;
 
         // 创建转换上下文
         SwsContext* ctx = ffmpeg.sws_getContext(
-            avFrame->width,
-            avFrame->height,
-            (AVPixelFormat)avFrame->format,
+            tmp_frame->width,
+            tmp_frame->height,
+            (AVPixelFormat)tmp_frame->format,
              dst_frame->width,
               dst_frame->height,
             (AVPixelFormat)dst_frame->format,
-            ffmpeg.SWS_FAST_BILINEAR,
+            ffmpeg.SWS_BICUBIC,
             null, null, null);
         //获取转换后图像的 缓冲区大小
         var bufferSize = ffmpeg.av_image_get_buffer_size(AVPixelFormat.AV_PIX_FMT_BGRA, dst_frame->width,
@@ -142,8 +164,8 @@ public unsafe class VideoDecode
         resule = ffmpeg.av_image_fill_arrays(ref TargetData, ref TargetLinesize, (byte*)FrameBufferPtr, (AVPixelFormat)dst_frame->format, dst_frame->width,
               dst_frame->height, 1);
         // 利用转换器将yuv 图像数据转换成指定的格式数据
-        ffmpeg.sws_scale(ctx, avFrame->data, avFrame->linesize, 0, avFrame->height, TargetData, TargetLinesize);
-    
+        ffmpeg.sws_scale(ctx, tmp_frame->data, tmp_frame->linesize, 0, tmp_frame->height, TargetData, TargetLinesize);
+
         var data1 = new byte_ptr8();
         data1.UpdateFrom(TargetData);
         var linesize = new int8();
@@ -151,12 +173,12 @@ public unsafe class VideoDecode
         //创建一个字节数据，将转换后的数据从内存中读取成字节数组
         byte[] bytes = new byte[1920 * 1080 * 4];
         Buffer.MemoryCopy((void*)data1[0], (void*)s, bytes.Length, bytes.Length);
-   
+
 
         Marshal.FreeHGlobal(FrameBufferPtr);
         ffmpeg.sws_freeContext(ctx);
-
-
+        //ffmpeg.av_frame_free(&sw_frame);
+        //ffmpeg.av_frame_free(&tmp_frame);
 
 
     }
