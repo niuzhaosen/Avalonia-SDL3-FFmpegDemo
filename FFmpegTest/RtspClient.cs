@@ -265,14 +265,17 @@ public class RtspClientTest
                 try
                 {
                     byte* data = (byte*)Marshal.UnsafeAddrOfPinnedArrayElement(array, 0).ToPointer();
+                    Stopwatch stopwatch = Stopwatch.StartNew();
                  
                    videoDecode.DecoderRTSP(data, array.Length, ptr, isgj);
-                 
-                  
+                    stopwatch.Stop();
+                    Console.WriteLine(stopwatch.Elapsed.TotalMilliseconds);
+
                     show();
                 }
                 finally
                 {
+                   
                     // 释放GCHandle
                     handle.Free();
                 }
