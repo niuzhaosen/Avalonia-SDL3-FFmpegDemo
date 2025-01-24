@@ -45,7 +45,7 @@ namespace Demo
             locked.Dispose();
 
 
-            RtspClientTest rtspClientTest = new RtspClientTest("rtsp://admin:asdqwe123@192.168.1.66:554/Streaming/Channels/101?transportmode=unicast&profile=Profile_1", nint.Zero,Renderer,sdl,RePaint, ptr);
+            FFmpegDecoder rtspClientTest = new FFmpegDecoder("rtsp://admin:asdqwe123@192.168.1.66:554/Streaming/Channels/101?transportmode=unicast&profile=Profile_1", nint.Zero,Renderer,sdl,RePaint, ptr);
             System.Threading.Thread thread = new System.Threading.Thread(rtspClientTest.PlayByFFmpeg);
             thread.IsBackground= true;
             thread.Start();

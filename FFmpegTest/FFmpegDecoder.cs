@@ -14,7 +14,7 @@ using System.Runtime.InteropServices;
 
 namespace FFmpegTest;
 
-public unsafe class RtspClientTest
+public unsafe class FFmpegDecoder
 {
 
 
@@ -27,7 +27,7 @@ public unsafe class RtspClientTest
     string rtspAddress;
     public delegate void showVideo();
     showVideo show;
-    public RtspClientTest(string rtspAddress, nint m_pTexture, Renderer* render, Sdl sdl, showVideo showVideo, nint ptr)
+    public FFmpegDecoder(string rtspAddress, nint m_pTexture, Renderer* render, Sdl sdl, showVideo showVideo, nint ptr)
     {
         this.sdl = sdl;
         this.render = render;
