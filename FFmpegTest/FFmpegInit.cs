@@ -27,13 +27,13 @@ public  class FFmpegInit
         }
         else
         {
-            DynamicallyLoadedBindings.LibrariesPath = AppDomain.CurrentDomain.BaseDirectory + "linux_x64";
+         
+            DynamicallyLoadedBindings.LibrariesPath = "/data/ffmpeg/lib";
         }
-        
-        
+
+     
         DynamicallyLoadedBindings.Initialize();
+       
 
-
-      
     }
 }

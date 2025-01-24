@@ -1,79 +1,76 @@
 using Avalonia;
 using Avalonia.Controls;
-using Avalonia.Controls.Documents;
-using Avalonia.Media;
+
 using Avalonia.Media.Imaging;
 using Avalonia.Platform;
 using Avalonia.Threading;
 using FFmpegTest;
 using System;
 using System.Threading.Tasks;
-
+using Silk.NET.SDL;
+using System.Threading;
+using System.Runtime.InteropServices;
+using Avalonia.Rendering;
+using Window = Silk.NET.SDL.Window;
 namespace Demo
 {
-    public partial class MainWindow : Window
+    public unsafe partial class MainWindow : Avalonia.Controls.Window
     {
         public MainWindow()
         {
             InitializeComponent();
             this.Loaded += MainWindow_Loaded;
-            RtspAddress.Text = "rtsp://admin:asdqwe123@192.168.1.66:554/Streaming/Channels/101?transportmode=unicast&profile=Profile_1";
+
             FFmpegInit.Init();
-            this.PlayBtn.Click += PlayBtn_Click;
-        }
-
-        private void PlayBtn_Click(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
-        {
-            WriteableBitmap map2 = new WriteableBitmap(new PixelSize(1920, 1080), new Vector(96, 96),
-                   PixelFormat.Bgra8888, AlphaFormat.Premul);
-            Img2.Source = map2;
-            WriteableBitmap map1 = new WriteableBitmap(new PixelSize(1920, 1080), new Vector(96, 96),
-               PixelFormat.Bgra8888, AlphaFormat.Premul);
-            Img1.Source = map1;
-            string rtspAddress = RtspAddress.Text;
-            Task.Run(() =>
-            {             
-                var locked2 = map2.Lock();
-                IntPtr ptr2 = locked2.Address;
-                locked2.Dispose();
-                RtspClientTest rtspClient = new RtspClientTest(RePaint, ptr2, rtspAddress);
-                rtspClient.PlayByRtspClient();
-            });
-           
-            Task.Run(() =>
-            {
-                var locked2 = map1.Lock();
-                IntPtr ptr2 = locked2.Address;
-                locked2.Dispose();
-                RtspClientTest rtspClient = new RtspClientTest(RePaint1, ptr2, rtspAddress);
-                rtspClient.PlayByFFmpeg();
-            });
 
         }
+
 
         private void MainWindow_Loaded(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
         {
-            
+            //SDl播放
+            Sdl sdl = Sdl.GetApi();
+          int z=  sdl.Init(Sdl.InitVideo);
+          
+            Window* Window =  sdl.CreateWindowFrom((void*)dis.Handle);
+       
+            Renderer* Renderer = sdl.CreateRenderer(Window, -1, (uint)RendererFlags.Accelerated);
 
+         
+            //原生绘制
+            WriteableBitmap writeableBitmap = new WriteableBitmap(new PixelSize(1920, 1080), new Vector(96, 96), Avalonia.Platform.PixelFormat.Bgra8888);
+            img.Source=writeableBitmap;
+            var locked = writeableBitmap.Lock();
+            IntPtr ptr = locked.Address;
+            locked.Dispose();
+
+
+            RtspClientTest rtspClientTest = new RtspClientTest("rtsp://admin:asdqwe123@192.168.1.66:554/Streaming/Channels/101?transportmode=unicast&profile=Profile_1", nint.Zero,Renderer,sdl,RePaint, ptr);
+            System.Threading.Thread thread = new System.Threading.Thread(rtspClientTest.PlayByFFmpeg);
+            thread.IsBackground= true;
+            thread.Start();
         }
         public void RePaint()
         {
 
-            Dispatcher.UIThread.InvokeAsync(() => Img2.InvalidateVisual());
-          
+            Dispatcher.UIThread.InvokeAsync(() => img.InvalidateVisual());
+
 
 
 
         }
-        public void RePaint1()
+
+    }
+    public class NativeEmbeddingControl : NativeControlHost
+    {
+        public IntPtr Handle { get; private set; }
+
+        protected override IPlatformHandle CreateNativeControlCore(IPlatformHandle parent)
         {
-
-
-            Dispatcher.UIThread.InvokeAsync(() => Img1.InvalidateVisual());
-
-
-
+            var handle = base.CreateNativeControlCore(parent);
+            Handle = handle.Handle;
+            Console.WriteLine($"Handle : {Handle}");
+            return handle;
         }
-
     }
 }

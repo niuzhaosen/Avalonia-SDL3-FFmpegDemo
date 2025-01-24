@@ -10,12 +10,8 @@
     </PropertyGroup>
 
     <ItemGroup>
-      <PackageReference Include="FFmpeg.AutoGen" Version="7.0.0" />
       <PackageReference Include="FFmpeg.AutoGen.Bindings.DynamicallyLoaded" Version="7.0.0" />
-    </ItemGroup>
-
-    <ItemGroup>
-      <ProjectReference Include="..\..\RtspClientSharp\RtspClientSharp\RtspClientSharp.csproj" />
+      <PackageReference Include="Silk.NET.SDL" Version="2.22.0" />
     </ItemGroup>
 
 </Project>
